@@ -1,0 +1,13 @@
+{
+  "purchase": {
+    "buyer_id": "mariano"
+  },
+  "hotel": {
+    "start_date": "2020-03-13",
+    "end_date": "2020-03-15"
+  },
+  "museum": {
+    "museum_name": "tate gallery",
+    "when": "2020-03-14"
+  }
+}

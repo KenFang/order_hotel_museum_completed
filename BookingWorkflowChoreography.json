@@ -1,0 +1,136 @@
+{
+  "StartAt": "BookHotelState",
+  "States": {
+    "BookHotelState": {
+      "Type": "Task",
+      "Next": "BookMuseumState",
+      "Parameters": {
+        "buyer_id.$": "$.purchase.buyer_id",
+        "end_date.$": "$.hotel.end_date",
+        "near.$": "$.museum.museum_name",
+        "start_date.$": "$.hotel.start_date"
+      },
+      "Resource": "arn:aws:lambda:[region]:[accountId]:function:BookHotelClient",
+      "ResultPath": "$.hotel",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "TransientError"
+          ],
+          "MaxAttempts": 3
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "InvalidInputError"
+          ],
+          "Next": "BookHotelInvalidInputError"
+        },
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "BookHotelFallback"
+        },
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "BookHotelAllFallback"
+        }
+      ]
+    },
+    "BookHotelInvalidInputError": {
+      "Type": "Fail",
+      "Error": "InvalidInputError",
+      "Cause": "This is a fallback from a BookHotel Lambda function exception; Invalid Input Error."
+    },
+    "BookHotelFallback": {
+      "Type": "Fail",
+      "Error": "States.TaskFailed",
+      "Cause": "This is a fallback from a reserved error code in BookHotel Lambda function."
+    },
+    "BookHotelAllFallback": {
+      "Type": "Fail",
+      "Error": "States.ALL",
+      "Cause": "This is a fallback from any error code in BookHotel Lambda function."
+    },
+    "BookMuseumState": {
+      "Type": "Task",
+      "Next": "NotifySuccess",
+      "Parameters": {
+        "buyer_id.$": "$.purchase.buyer_id",
+        "museum_name.$": "$.museum.museum_name",
+        "when.$": "$.museum.when"
+      },
+      "Resource": "arn:aws:lambda:[region]:[accountId]:function:BookMuseumClient",
+      "ResultPath": "$.museum",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "TransientError"
+          ],
+          "MaxAttempts": 3
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "CancelHotelState"
+        }
+      ]
+    },
+    "NotifySuccess": {
+      "Type": "Task",
+      "End": true,
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:[region]:[accountId]:OrderCompletedTopic",
+        "Message.$": "$.purchase.buyer_id",
+        "MessageAttributes": {
+          "my_attribute_no_1": {
+            "DataType": "String",
+            "StringValue.$": "$.hotel.start_date"
+          },
+          "my_attribute_no_2": {
+            "DataType": "String",
+            "StringValue.$": "$.hotel.end_date"
+          },
+          "my_attribute_no_3": {
+            "DataType": "String",
+            "StringValue.$": "$.hotel.reservation_id"
+          },
+          "my_attribute_no_4": {
+            "DataType": "String",
+            "StringValue.$": "$.hotel.name"
+          },
+          "my_attribute_no_5": {
+            "DataType": "String",
+            "StringValue.$": "$.museum.when"
+          },
+          "my_attribute_no_6": {
+            "DataType": "String",
+            "StringValue.$": "$.museum.reservation_id"
+          },
+          "my_attribute_no_7": {
+            "DataType": "String",
+            "StringValue.$": "$.museum.name"
+          }
+        }
+      }
+    },
+    "CancelHotelState": {
+      "Type": "Task",
+      "Next": "BookMuseumAllFallback",
+      "Resource": "arn:aws:lambda:[region]:[accountId]:function:CancelHotelServer"
+    },
+    "BookMuseumAllFallback": {
+      "Type": "Fail",
+      "Error": "States.ALL",
+      "Cause": "This is a fallback from any error code in BookMuseum Lambda function."
+    }
+  }
+}
